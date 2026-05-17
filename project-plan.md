@@ -1,9 +1,27 @@
 # 拼豆小程序 · 研发项目计划
 
-> 文档类型：战略落地 + 技术研发里程碑计划  
+> 文档类型：战略落地 + 技术研发里程碑计划（回答 **What / When**）  
 > 创建时间：2026年5月17日  
 > 更新时间：2026年5月17日  
 > 项目目标：构建「AI图像定制 + C2M柔性供应链」拼豆小程序，从0到1完成MVP，逐步迭代至完整商业闭环
+
+---
+
+## 📚 项目文档体系
+
+本文档是拼豆项目四份核心文档之一，回答"做什么、什么时候做"。完整文档体系：
+
+| 文档 | 回答的问题 | 文件 |
+|---|---|---|
+| **战略规划** | Why——为什么做、市场判断、需求洞察 | [`guihua.md`](./guihua.md) |
+| **研发计划**（本文档） | What / When——做什么、什么时候做、技术怎么落 | [`project-plan.md`](./project-plan.md) |
+| **流程与里程碑** | How——用户与内部流程、里程碑 Go/No-Go 决策门 | [`project-flow-and-milestones.md`](./project-flow-and-milestones.md) |
+| **决策变更日志（ADR）** | Why-Changed——关键决策的当初理由 + 变更追溯 | [`decision-log.md`](./decision-log.md) |
+
+**使用规则**：
+- 计划层（时间/范围/技术选型）变更 → 改本文档 + 在 `decision-log.md` 新增 ADR
+- 阶段切换是否进入下一 Phase → 由 `project-flow-and-milestones.md` 中的 **Go/No-Go 决策门** 决定
+- 与本计划相关的关键决策基线已固化为 ADR-001~010（详见 `decision-log.md` §2）
 
 ---
 

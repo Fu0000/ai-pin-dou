@@ -2,7 +2,22 @@
 
 > 版本：v1.0  
 > 更新时间：2026年5月17日  
-> 文档性质：商业规划 + 产品方向
+> 文档性质：商业规划 + 产品方向（回答 **Why**）
+
+---
+
+## 📚 项目文档体系
+
+本文档是拼豆项目四份核心文档之一，回答"为什么做"。完整文档体系：
+
+| 文档 | 回答的问题 | 文件 |
+|---|---|---|
+| **战略规划**（本文档） | Why——为什么做、市场判断、需求洞察 | [`guihua.md`](./guihua.md) |
+| **研发计划** | What / When——做什么、什么时候做、技术怎么落 | [`project-plan.md`](./project-plan.md) |
+| **流程与里程碑** | How——用户与内部流程、里程碑 Go/No-Go 决策门 | [`project-flow-and-milestones.md`](./project-flow-and-milestones.md) |
+| **决策变更日志（ADR）** | Why-Changed——关键决策的当初理由 + 变更追溯 | [`decision-log.md`](./decision-log.md) |
+
+**使用规则**：战略层任何变化，必须同步更新本文档 **并** 在 `decision-log.md` 中新增对应 ADR。
 
 ---
 
