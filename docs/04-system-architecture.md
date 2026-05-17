@@ -118,7 +118,7 @@ flowchart LR
 | 服务模块 | 职责 |
 |---|---|
 | `user-service` | 用户登录、信息、积分（PX） |
-| `pattern-service` | 图纸 CRUD、单格修改 |
+| `pattern-service` | 图纸 CRUD、风格变体切换（list / switch） |
 | `order-service` | 订单创建、状态机、支付回调 |
 | `inventory-service` | 色卡库存查询、可售性判断 |
 | `creator-service` | 创作者认证、佣金（Phase 2） |
@@ -227,7 +227,7 @@ flowchart LR
 [6] 缺货色号自动 CIE Lab 替换
         │
         ▼
-[7] 返回完整图纸数据 + 算料清单 + 库存灯
+[7] 返回完整图纸数据 + 算料清单（⛔ 用户侧不展示库存灯，仅运营后台用，关联 ADR-023）
         │
         ▼
 [8] 用户确认 → 调用 commerce-service 加购
