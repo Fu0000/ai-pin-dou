@@ -39,7 +39,7 @@ L9  运营层 ─── 冷启动、客服、创作者
 | 文档 | 路径 | 说明 | 状态 |
 |---|---|---|---|
 | 产品需求文档（PRD） | [`./01-prd.md`](./01-prd.md) | MVP 功能粒度 + 用户故事 + 验收标准 | 🟡 v0.1 骨架 |
-| 用户画像 | [`./02-personas.md`](./02-personas.md) | 5 类核心用户的画像与诉求 | ⬜ 待创建（M0） |
+| 用户画像 | [`./02-personas.md`](./02-personas.md) | 5 类核心用户的画像与诉求 | 🟡 v0.1 骨架 |
 | 用户旅程图 | （并入 flow-milestones） | 端到端用户流程 | ✅ 已在 L0 |
 
 ### L2 · 设计层（How looks）
@@ -56,7 +56,7 @@ L9  运营层 ─── 冷启动、客服、创作者
 | 系统架构 | [`./04-system-architecture.md`](./04-system-architecture.md) | 服务拓扑、数据流、部署 | 🟡 v0.1 骨架 |
 | 数据模型 | [`./05-data-model.md`](./05-data-model.md) | 核心 6 张表 DDL | 🟡 v0.1 骨架 |
 | API 契约 | [`./06-api-spec.md`](./06-api-spec.md) | OpenAPI 风格接口规范 | 🟡 v0.1 骨架 |
-| 算法工程规范 | [`./07-algo-spec.md`](./07-algo-spec.md) | 输入/输出/参数/版本管理 | ⬜ 待创建（W1） |
+| 算法工程规范 | [`./07-algo-spec.md`](./07-algo-spec.md) | 8 步管线 / 版本管理 / 回归测试 | 🟡 v0.1 骨架 |
 
 ### L4 · 多端协作层
 
@@ -70,14 +70,14 @@ L9  运营层 ─── 冷启动、客服、创作者
 
 | 文档 | 路径 | 说明 | 状态 |
 |---|---|---|---|
-| 编码规范 + Git 工作流 | [`./11-coding-standards.md`](./11-coding-standards.md) | 命名、分支、提交、Review | ⬜ 待创建（W1） |
+| 编码规范 + Git 工作流 | [`./11-coding-standards.md`](./11-coding-standards.md) | Python/前端/DB/测试/AI 协作 | 🟡 v0.1 骨架 |
 | 测试计划 | [`./12-test-plan.md`](./12-test-plan.md) | 测试策略 + 核心用例 | ⬜ 待创建（W3） |
 
 ### L6 · 数据层
 
 | 文档 | 路径 | 说明 | 状态 |
 |---|---|---|---|
-| 埋点规范 | [`./13-tracking-spec.md`](./13-tracking-spec.md) | 事件命名、参数、上报格式 | ⬜ 待创建（W2） |
+| 埋点规范 | [`./13-tracking-spec.md`](./13-tracking-spec.md) | 事件命名 / MVP 27 事件 / 漏斗 | 🟡 v0.1 骨架 |
 | 指标字典 | [`./14-metrics-dict.md`](./14-metrics-dict.md) | 北极星 + 核心指标定义 | ⬜ 待创建（W2） |
 | 数据看板设计 | [`./15-dashboard.md`](./15-dashboard.md) | 周/月度看板布局 | ⬜ 待创建（Phase 2） |
 
@@ -122,21 +122,19 @@ L9  运营层 ─── 冷启动、客服、创作者
 
 ## 📐 文档使用规范
 
-### 1. 每份文档必须有的"五件套"
+### 1. 每份文档必须有的"五件套"（单人项目精简版）
 
 每份文档顶部必须有以下 metadata：
 
 ```yaml
 文档名: <名称>
 版本: v0.1
-状态: 草稿 / 评审中 / 已通过
-Owner: <姓名 + 角色>
-Reviewers: <评审人列表>
 最后更新: YYYY-MM-DD
-下次复盘: YYYY-MM-DD
 关联文档: <列出依赖的其他文档>
 关联 ADR: <如有>
 ```
+
+> 单人项目不要 Owner / Reviewers / 复盘节奏字段（团队 ≥ 2 人时再加，参考 AGENTS.md §1.3）。
 
 ### 2. 文档之间必须互相超链接
 
@@ -152,22 +150,25 @@ Reviewers: <评审人列表>
 
 任何文档的核心决策变更（如技术栈替换、流程改造、定价调整），必须先在 [`/decision-log.md`](../decision-log.md) 立 ADR，再修订文档本身。
 
-### 5. 每份文档必须定期复盘
+### 5. 文档复盘节奏（按需，不强制）
 
-- 高频文档（PRD、API、数据模型）：每周复盘
-- 中频文档（架构、设计系统、埋点）：每两周复盘
-- 低频文档（合规、运营手册）：每月复盘
+单人项目不强制定期复盘，按这两个时机自然触发：
+- **改完功能时**：同步更新对应 PRD 用户故事的 AC 状态
+- **决策门评估时**（M1/M2/M3/M4）：复盘所有 v0.x 文档，能升 v1.0 的就升
 
 ---
 
-## 🚀 新成员入职阅读清单（按顺序读 1 小时即可上手）
+## 🚀 项目入门阅读清单（按顺序读 1 小时即可上手）
 
-1. [`/guihua.md`](../guihua.md)（10 min）—— 我们在做什么
-2. [`/project-flow-and-milestones.md`](../project-flow-and-milestones.md)（10 min）—— 用户怎么用 + 我们怎么交付
-3. [`/decision-log.md`](../decision-log.md)（10 min）—— 关键决策的来龙去脉
-4. [`./01-prd.md`](./01-prd.md)（10 min）—— 当前 Sprint 在做什么
-5. [`./04-system-architecture.md`](./04-system-architecture.md)（10 min）—— 技术全貌
-6. [`./11-coding-standards.md`](./11-coding-standards.md)（10 min）—— 怎么提交代码
+> 给「未来的我」和「AI 代理」用：
+
+1. [`/AGENTS.md`](../AGENTS.md)（5 min）—— 项目核心手册（最先读）
+2. [`/guihua.md`](../guihua.md)（10 min）—— 我们在做什么
+3. [`/project-flow-and-milestones.md`](../project-flow-and-milestones.md)（10 min）—— 用户怎么用 + 我们怎么交付
+4. [`/decision-log.md`](../decision-log.md)（10 min）—— 关键决策的来龙去脉
+5. [`./01-prd.md`](./01-prd.md)（10 min）—— 当前 Sprint 在做什么
+6. [`./04-system-architecture.md`](./04-system-architecture.md)（10 min）—— 技术全貌
+7. [`./11-coding-standards.md`](./11-coding-standards.md)（10 min）—— 怎么提交代码
 
 ---
 
@@ -175,15 +176,24 @@ Reviewers: <评审人列表>
 
 | 维度 | 当前 | 目标 |
 |---|---|---|
-| 已完成（v1.0）数量 | 4 / 25 | M1 时 ≥ 12 / 25 |
-| 骨架（v0.1）数量 | 6 / 25 | M0 启动前 ≥ 10 / 25 |
+| L0 战略层完成 | 4 / 4 ✅ | 持续维护 |
+| L1+ 详细文档骨架 | 9 / 25（36%） | M0 启动前 ≥ 12 / 25 |
+| L1+ 详细文档完成（v1.0） | 0 / 25 | M1 时 ≥ 8 / 25 |
 | 平均"最后更新"距今 | — | ≤ 14 天 |
-| 文档评审会执行率 | — | ≥ 90% |
+
+**已建骨架（v0.1）**：
+- L1：01-prd / 02-personas
+- L2：03-design-system
+- L3：04-system-architecture / 05-data-model / 06-api-spec / 07-algo-spec
+- L5：11-coding-standards
+- L6：13-tracking-spec
 
 ---
 
 ## 📝 文档变更日志
 
-| 日期 | 版本 | 变更内容 | Owner |
-|---|---|---|---|
-| 2026-05-17 | v0.1 | 初始化文档体系，建立 6 份骨架 | 项目组 |
+| 日期 | 版本 | 变更内容 |
+|---|---|---|
+| 2026-05-17 | v0.1 | 初始化文档体系，建立 L1-L3 共 5 份骨架（PRD/设计/架构/数据/API） |
+| 2026-05-17 | v0.2 | 单人项目精简：metadata 去掉 Owner/Reviewers/复盘节奏字段 |
+| 2026-05-17 | v0.3 | 新增 4 份 Phase 1 W1 关键骨架：02-personas / 07-algo-spec / 11-coding-standards / 13-tracking-spec |
