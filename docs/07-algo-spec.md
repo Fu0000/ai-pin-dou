@@ -1,11 +1,11 @@
-# 算法工程规范 · 拼豆小程序 v0.5
+# 算法工程规范 · 拼豆小程序 v0.6
 
 ```yaml
 文档名: Algorithm Engineering Spec - 拼豆小程序
-版本: v0.5（风格变体分支 + 推荐预分析 + M0 阻塞门）
-最后更新: 2026-05-17
-关联文档: 04-system-architecture.md, 05-data-model.md, 06-api-spec.md
-关联 ADR: ADR-003, ADR-004, ADR-014, ADR-019, ADR-023, ADR-024, ADR-025
+版本: v0.6（cutout 主体预判回退规则）
+最后更新: 2026-05-18
+关联文档: 04-system-architecture.md, 05-data-model.md, 06-api-spec.md, 30-competitive-analysis.md
+关联 ADR: ADR-003, ADR-004, ADR-014, ADR-019, ADR-023, ADR-024, ADR-025, ADR-029
 ```
 
 ---
@@ -208,19 +208,29 @@ def precompute_difficulty_features(image: PIL.Image) -> dict:
 
 | 项 | 约定 |
 |---|---|
-| 主选 | `rembg` (u2net) — 复杂背景效果好 |
+| 主选 | `rembg` (u2net / u2netp) — 复杂背景效果好 |
 | 备选 | OpenCV `grabCut` — 简单背景，速度快 |
 | 失败兜底 | 不抠，直接进入 ③（用户可手动修） |
 | 性能预算 | P95 ≤ 3s |
+| **主体存在性预判**（关联 ADR-029 v0.2）| cutout 后若 alpha 通道前景比 < 5% → 判定为风景/无主体，**回退到原图**继续后续步骤；否则正常使用 cutout 输出 |
+
+> **背景**：实测发现 rembg u2netp 在纯风景图（无明显主体）上会把整张图识别为背景，导致后续 quantize 退化。因此 cutout 步骤必须有"前景比阈值"兜底，详见 [`/algo-feasibility/M0_DRYRUN_REPORT.md §2.1`](../algo-feasibility/M0_DRYRUN_REPORT.md)。
 
 ```python
 # 伪代码
-def cutout(image: PIL.Image, mode: str = 'auto') -> PIL.Image:
+def cutout(image: PIL.Image, mode: str = 'auto') -> tuple[PIL.Image, float]:
     """
     mode: 'auto' | 'rembg' | 'grabcut' | 'none'
-    返回带 alpha 通道的图，背景透明
+    返回带 alpha 通道的图 + 前景比例 (0~1)；
+    调用方决定 fg_ratio < 0.05 时是否回退原图。
     """
     ...
+
+def cutout_with_fallback(image: PIL.Image, threshold: float = 0.05) -> PIL.Image:
+    cut, fg = cutout(image, mode='auto')
+    if fg < threshold:
+        return image  # 回退原图（关联 ADR-029）
+    return cut
 ```
 
 ### 5.3 ③ Pixelize 降采样
@@ -479,3 +489,4 @@ dependencies = [
 |---|---|---|---|
 | 2026-05-17 | v0.1 | 初始化算法工程规范，建立 8 步管线 + 版本管理基线 | — |
 | 2026-05-17 | v0.5 | 新增 §1.2 风格变体生成分支 + §3 推荐档位预分析（颜色多样性 + 边缘密度 + 失败回退「摆件经典」）+ §4 色号映射 ↔ 库存预占衔接 + §6 性能与质量门（M0 阻塞门 100 张样图 P95 ≤ 10s + 优良率 ≥ 60%；M1 决策门 ≥ 75%）+ 灵魂三句话锚点 | 关联 ADR-014, ADR-019, ADR-023, ADR-024, ADR-025 |
+| 2026-05-18 | v0.6 | §5.2 ② Cutout 新增「主体存在性预判」回退规则（前景比 < 5% 回退原图）；来自真实图 dry-run 发现：rembg 在风景类几乎全识别为背景 | 关联 ADR-029 v0.2 |

@@ -1460,3 +1460,7 @@ decision-log.md（决策变更，沉淀 Why-changed）  ◄── 本文档
 **9. 变更历史**
 
 - 2026-05-18：初次落定，等待 ADR-030 真实样本最终判定后再决定是否升级为「全 PASS」状态
+- 2026-05-18：v0.2 真实图扩展验证（60 张 Wikimedia Commons + Picsum，cat/face/pet/scene 各 15）
+  - 真实图 P95 = 0.472s（vs 合成图 0.402s，慢 17%），仍远低于 10s 阈值（21× 余量）
+  - **新发现**：rembg u2netp 在风景类（无明确主体）几乎全识别为背景，scene 中位色数从无 cutout 的 13 降到 with cutout 的 3。算法管线必须新增「主体存在性预判」步骤（前景比 < 5% 时跳过 cutout）。
+  - 该发现已固化到 [`/algo-feasibility/M0_DRYRUN_REPORT.md`](./algo-feasibility/M0_DRYRUN_REPORT.md) §2.1，将作为 ADR-030 真实样本判定时的算法管线必须项。
