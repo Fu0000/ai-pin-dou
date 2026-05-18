@@ -105,6 +105,7 @@ L9  运营层 ─── 冷启动、客服、创作者
 | 冷启动运营 SOP | [`./23-cold-start.md`](./23-cold-start.md) | KOL 投放 / 灰度 / 监控 | ⬜ 待创建（Phase 1 末） |
 | 客服 FAQ | [`./24-customer-service.md`](./24-customer-service.md) | 常见问题 + 处理话术 | ⬜ 待创建（Phase 1 末） |
 | 创作者运营手册 | [`./25-creator-playbook.md`](./25-creator-playbook.md) | 招募 / 激励 / 培训 | ⬜ 待创建（Phase 2） |
+| 竞品分析 | [`./30-competitive-analysis.md`](./30-competitive-analysis.md) | 已收录：perlerbeads.net | 🟡 v0.1 |
 
 ---
 
@@ -197,3 +198,4 @@ L9  运营层 ─── 冷启动、客服、创作者
 | 2026-05-17 | v0.1 | 初始化文档体系，建立 L1-L3 共 5 份骨架（PRD/设计/架构/数据/API） |
 | 2026-05-17 | v0.2 | 单人项目精简：metadata 去掉 Owner/Reviewers/复盘节奏字段 |
 | 2026-05-17 | v0.3 | 新增 4 份 Phase 1 W1 关键骨架：02-personas / 07-algo-spec / 11-coding-standards / 13-tracking-spec |
+| 2026-05-18 | v0.4 | 新增 L9 运营层「30-competitive-analysis.md」（v0.1）：首条 perlerbeads.net 完整拆解 |
