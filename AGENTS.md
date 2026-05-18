@@ -120,7 +120,7 @@
 当前阶段: M0 启动决策门（Phase 1 启动前）
 项目周次: Pre-Week 1
 仓库类型: 文档驱动（Docs-First），代码尚未启动
-最近重大决策: ADR-001 ~ ADR-010 已建立基线；ADR-011 ~ ADR-026（PRD v0.8 灵魂对齐第二轮）；ADR-027（部署侧整体迁阿里云）；ADR-028（部署形态收敛为单 ECS Docker Compose 全栈，部分取代 ADR-027）
+最近重大决策: ADR-001 ~ ADR-010 已建立基线；ADR-011 ~ ADR-026（PRD v0.8 灵魂对齐第二轮）；ADR-027（部署侧整体迁阿里云）；ADR-028（部署形态收敛为单 ECS Docker Compose 全栈，部分取代 ADR-027）；ADR-029（M0 算法 dry-run 合成图通过）
 未决议题: TBD-01 ~ TBD-10（详见 decision-log.md §3）
 最后更新: 2026-05-18
 ```
@@ -261,13 +261,14 @@ ai-pin-dou/
 
 ### 🔴 阻塞项（这些不过不能进 Phase 1）
 
-- [ ] **算法可行性预实测**（C10 决策 / ADR-014）：
+- [ ] **算法可行性预实测**（C10 决策 / ADR-014 / ADR-029 dry-run 通过）：
   - [x] 实测脚手架就位：[`/algo-feasibility/`](./algo-feasibility/)（README + 8 步管线 + Notebook + 评分脚本）— 2026-05-18 已完成
-  - [ ] 100 张样图采集（cat/face/pet/scene 各 25）
-  - [ ] Mard 色卡 `data/mard_palette.json` 就位
-  - [ ] Notebook 跑全流程，产出 `timing_report.csv`
-  - [ ] 100 张人工评分 + `score_summary.py` 输出 PASS
-  - 若 P95 > 10s 或优良率 < 60% → MVP 推迟，先调算法
+  - [x] Mard 色卡 `data/mard_palette.json` 就位（291 色，来自 maxcleme/beadcolors）— 2026-05-18 已完成
+  - [x] dry-run（合成图）跑通：100/100 成功，P95 = 0.402s，详见 [`/algo-feasibility/M0_DRYRUN_REPORT.md`](./algo-feasibility/M0_DRYRUN_REPORT.md) — 2026-05-18 已完成（关联 ADR-029）
+  - [ ] 100 张真实样图采集（cat/face/pet/scene 各 25）
+  - [ ] 真实图复跑 + 100 张人工评分 + `score_summary.py` 输出 PASS
+  - [ ] 立 ADR-030 归档真实样本最终判定
+  - 若真实图 P95 > 10s 或优良率 < 60% → MVP 推迟，先调算法
 - [ ] **微信小程序企业主体注册**（C9 决策）：电商类目，含支付资质
 - [ ] **至少 1 家 SGS 认证供应商签 MoU**：拿到 SGS 证书图片用于 US-9.2
 - [ ] **启动资金到位**：覆盖 6 个月研发 + 供应链押金
@@ -332,3 +333,4 @@ ai-pin-dou/
 | 2026-05-18 | v0.6 | §8 启动 Checklist 新增「🟦 基础设施」小节：ECS 规格 / 域名备案 / ICP 备案 已完成；RDS / Redis / OSS / FC / ACR / SLS 待开通 | 关联 ADR-027 |
 | 2026-05-18 | v0.7 | §5 技术栈表"部署"行收敛为单 ECS + Docker Compose 全栈；§2 项目当前状态 + §8 基础设施 checklist 同步去掉 FC 函数骨架开通项，改为 docker-compose 模板编写项 | 关联 ADR-028 |
 | 2026-05-18 | v0.8 | §8 阻塞项「算法可行性预实测」展开为 5 个子任务，标记脚手架就位（algo-feasibility/）| 关联 ADR-014 |
+| 2026-05-18 | v0.9 | §2 项目当前状态同步 ADR-029；§8 阻塞项标记 dry-run 完成（合成图 P95 0.402s）+ Mard 色卡就位；新增"立 ADR-030 真实样本判定"子任务 | 关联 ADR-029 |

@@ -56,7 +56,7 @@ algo-feasibility/
 │   ├── mard_palette.json      ← Mard 400+ 色卡（关联 ADR-004）
 │   └── results/               ← 每次跑的输出（图、JSON、耗时）
 └── scoring/
-    ├── score_template.csv     ← 100 张人工评分模板
+    ├── score_template.csv     ← 评分表头模板（4 行说明 + 0 行数据，入库）
     └── score_summary.py       ← 汇总评分 + 计算优良率
 ```
 
@@ -115,9 +115,9 @@ Notebook 会：
 
 ### 4.5 人工评分
 
-打开 `scoring/score_template.csv`，对照 `data/results/<sample_id>/preview.png` 给 1~5 分（5 分制）。
+跑完 `run_dryrun.py` 会自动生成 `scoring/score_pending.csv`（不入库），对照 `data/results/<sample_id>/preview.png` 给 1~5 分（5 分制）后保存。
 
-跑 `python scoring/score_summary.py` 输出：
+跑 `uv run python scoring/score_summary.py scoring/score_pending.csv` 输出：
 - 平均分
 - 优良率（≥3 分占比）
 - 各类样本（猫/人脸/宠物/风景）单独统计
@@ -182,7 +182,7 @@ scoring/score_template.csv        →  作为算法版本回归基线（关联 d
 
 - M0 阻塞门评估结果（PASS / FAIL）
 - `data/results/timing_report.csv` 摘要
-- `scoring/score_summary.py` 输出
+- `scoring/score_summary.py scoring/score_pending.csv` 输出
 - 任何参数调整记录
 - 100 张样本的总目录大小（用于评估算法容器内存预算，关联 ADR-028 §4.4 回切条件）
 

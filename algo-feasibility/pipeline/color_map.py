@@ -17,11 +17,18 @@ PALETTE_PATH = Path(__file__).resolve().parent.parent / "data" / "mard_palette.j
 
 
 def load_palette() -> tuple[list[dict], np.ndarray]:
-    """Return (entries, lab_array) where lab_array.shape == (N, 3)."""
+    """Return (entries, lab_array) where lab_array.shape == (N, 3).
+
+    Prefer pre-computed Lab from the upstream palette JSON when available
+    (more accurate than re-deriving from sRGB).
+    """
     with open(PALETTE_PATH, encoding="utf-8") as f:
         entries: list[dict] = json.load(f)
-    rgb = np.array([[e["r"], e["g"], e["b"]] for e in entries], dtype=np.float32) / 255.0
-    lab = rgb2lab(rgb.reshape(-1, 1, 3)).reshape(-1, 3)
+    if entries and all("lab_l" in e for e in entries):
+        lab = np.array([[e["lab_l"], e["lab_a"], e["lab_b"]] for e in entries], dtype=np.float32)
+    else:
+        rgb = np.array([[e["r"], e["g"], e["b"]] for e in entries], dtype=np.float32) / 255.0
+        lab = rgb2lab(rgb.reshape(-1, 1, 3)).reshape(-1, 3)
     return entries, lab
 
 

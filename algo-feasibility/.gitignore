@@ -1,11 +1,14 @@
-# Samples (raw photos, not committed)
+# Samples (raw photos, not committed; synthetic ones are regenerable via data/build_synthetic_samples.py)
 samples/
 
 # Results (regenerated each run)
 data/results/
 
-# Mard palette (license-bound, fetch separately)
-data/mard_palette.json
+# Source CSV stays out (license-bound, fetch from upstream); JSON palette is committed for reproducibility
+data/mard.csv
+
+# Per-run scoring sheet (regenerated from score_template.csv each run)
+scoring/score_pending.csv
 
 # Python
 .venv/
