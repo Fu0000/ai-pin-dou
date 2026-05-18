@@ -1,11 +1,11 @@
-# 编码规范 · 拼豆小程序 v0.1
+# 编码规范 · 拼豆小程序 v0.2
 
 ```yaml
 文档名: Coding Standards - 拼豆小程序
-版本: v0.1（骨架）
-最后更新: 2026-05-17
-关联文档: AGENTS.md §1.4 / 04-system-architecture.md
-关联 ADR: ADR-002（技术栈）
+版本: v0.2（新增前端性能与媒体规范）
+最后更新: 2026-05-18
+关联文档: AGENTS.md §1.4 / 04-system-architecture.md / 30-competitive-analysis.md
+关联 ADR: ADR-002（技术栈）, ADR-027 / ADR-028（部署）
 ```
 
 ---
@@ -348,16 +348,145 @@ alembic upgrade head
 
 ---
 
-## 7. 安全规范
+## 7. 前端性能与媒体规范（关联 30-competitive-analysis.md）
 
-### 7.1 永远不要
+> 这一节的硬性约束**全部来自 perlerbeads.net 竞品分析的实测数据**——避免重蹈它的覆辙（INP 640ms、629.9 kB 图片浪费、DOM 节点 8151）。
+
+### 7.1 像素图纸渲染：必须用 canvas，禁止 DOM grid
+
+**硬规则**：
+
+- ❌ 禁止用 `<div>` × N² 渲染像素图纸网格
+- ✅ 32×32 / 48×48 / 64×64 等任意网格统一用 `<canvas>` 渲染
+- ✅ 单格点击 / 拖拽编辑通过 canvas 坐标 → 网格索引映射实现，而非真实 DOM 节点事件
+- ✅ 推荐 LeaferJS（已在 project-plan.md 选型）或原生 Canvas2D
+
+**理由**（实测对照）：
+
+| 维度 | DOM grid 方案 | Canvas 方案 |
+|---|---|---|
+| 88×88 网格 DOM 节点数 | 7744 个 | 1 个 |
+| 整页节点数 | 8151（远超 Lighthouse 警告 1500）| < 800 |
+| 真实用户 INP | 640ms（Poor）| < 200ms（目标 Good）|
+| 局部重绘成本 | 整网格触发 layout/paint | 仅重画变化区域 |
+
+> 数据来源：[`./30-competitive-analysis.md §1.11`](./30-competitive-analysis.md) 实测 perlerbeads.net /designer。
+
+### 7.2 图片必须按渲染尺寸出多档 + 现代格式
+
+**硬规则**：
+
+- ✅ 所有 OSS / 静态站图片必须用 next/image 的 `sizes` 配置（或等价的 `srcset` + `sizes` 手写）
+- ✅ 默认输出 **WebP**，支持 AVIF 的浏览器自动协商 AVIF
+- ✅ 列表/缩略图严禁直接引用原图，必须经过 OSS 图片处理（`?x-oss-process=image/resize,w_xxx`）
+- ✅ 缩略图最大宽度按 CSS 显示宽度的 2× 限制（兼顾 retina）
+- ❌ 禁止把 1927×1927 的图缩到 92×92 显示（perlerbeads.net 浪费 276 kB / 张的反例）
+
+**OSS 图片处理示例**：
+
+```vue
+<!-- ❌ 禁止 -->
+<img src="https://oss.pindou.com/patterns/12345.png" />
+
+<!-- ✅ 推荐：列表缩略图 92x92 -->
+<img
+  :src="ossUrl + '?x-oss-process=image/resize,w_184/format,webp'"
+  :srcset="`
+    ${ossUrl}?x-oss-process=image/resize,w_92/format,webp 1x,
+    ${ossUrl}?x-oss-process=image/resize,w_184/format,webp 2x
+  `"
+  width="92"
+  height="92"
+  loading="lazy"
+/>
+```
+
+**预算上限**：
+
+| 场景 | 单图上限 | 总图上限 |
+|---|---|---|
+| 首页缩略图 | 50 KB | 总下载 < 500 KB |
+| 图纸预览主图 | 200 KB | — |
+| OG / Social card | 150 KB | — |
+
+### 7.3 第三方脚本预算
+
+> perlerbeads.net 第三方代码 **1.27 MB**（Google Ads + GTM），是它 BP 73 分的主要扣分项。拼豆变现靠 SKU 不靠广告，必须在源头拒绝。
+
+**硬规则**：
+
+- ❌ MVP 不引入 Google Tag Manager / AdSense / 任何广告脚本
+- ⏳ Phase 2 数据中台再上 GA4 或自建埋点（关联 13-tracking-spec.md）
+- ✅ 任何引入第三方 JS 必须**写明用途 + 预算（KB）+ 撤销条件**到 PR 描述
+- ✅ 单页第三方脚本总预算上限：**100 KB**
+
+### 7.4 DOM 节点数硬上限
+
+- 单页 DOM 节点数**警告线 1500 / 阻断线 3000**
+- CI 中加 puppeteer / playwright 检查（Phase 1 末加）
+
+### 7.5 Web Vitals 目标
+
+> 这是拼豆官网/H5 落地页（Phase 1 末上线）的硬指标，对照 perlerbeads.net 真实用户数据制定。
+
+| 指标 | 目标 | 警戒 | perlerbeads.net 真实数据 |
+|---|---|---|---|
+| LCP (p75) | ≤ 2.0s | ≤ 2.5s | 2.37s（接近警戒）|
+| CLS (p75) | < 0.05 | < 0.10 | 0.03 ✅ |
+| INP (p75) | < 200ms | < 500ms | **640ms ❌**（必须超越）|
+| TTFB (p75) | ≤ 600ms | ≤ 1200ms | 1224ms（差）|
+
+> 小程序场景由微信运行时控制，不直接对标；上面指标用于官网/H5 落地页。
+
+### 7.6 robots.txt 模板（关联 30-competitive-analysis.md §1.5）
+
+> 拼豆图纸数据是核心资产，在域名上线第一天就要把 AI 爬虫屏蔽掉。
+
+```
+# robots.txt - 拼豆官网/H5
+User-agent: *
+Content-Signal: search=yes,ai-train=no
+Allow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+Sitemap: https://www.pindou.com/sitemap.xml
+```
+
+---
+
+## 8. 安全规范
+
+### 8.1 永远不要
 
 - ❌ 在 git 中提交密钥/Token（用 `.env` + `.gitignore`）
 - ❌ 在日志中打印手机号、身份证号、支付流水原文
 - ❌ 信任用户输入（前后端双重校验）
 - ❌ 用 RGB 欧氏距离做色彩匹配（用 CIE Lab，关联算法规范 §3.5）
 
-### 7.2 必须
+### 8.2 必须
 
 - ✅ 所有 API 加鉴权（除 webhook）
 - ✅ 用户图片 24h 自动删除（隐私合规）
@@ -366,9 +495,9 @@ alembic upgrade head
 
 ---
 
-## 8. 日志与错误处理
+## 9. 日志与错误处理
 
-### 8.1 结构化日志
+### 9.1 结构化日志
 
 ```python
 import structlog
@@ -384,7 +513,7 @@ log.info(
 )
 ```
 
-### 8.2 错误码（关联 06-api-spec.md §1.3）
+### 9.2 错误码（关联 06-api-spec.md §1.3）
 
 ```python
 class BizError(Exception):
@@ -398,7 +527,7 @@ class ImageTooLargeError(BizError):
 
 ---
 
-## 9. AI 代理产出代码的额外要求
+## 10. AI 代理产出代码的额外要求
 
 > 单人项目大量代码会由 AI 代理产出，必须额外约束：
 
@@ -410,7 +539,7 @@ class ImageTooLargeError(BizError):
 
 ---
 
-## 10. 待补完成项
+## 11. 待补完成项
 
 - [ ] `pyproject.toml` 完整配置文件
 - [ ] `eslint.config.js` 完整配置文件
@@ -420,8 +549,9 @@ class ImageTooLargeError(BizError):
 
 ---
 
-## 11. 变更日志
+## 12. 变更日志
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-05-17 | v0.1 | 初始化编码规范，覆盖 Python / 前端 / DB / 测试 / AI 协作 |
+| 2026-05-18 | v0.2 | 新增 §7「前端性能与媒体规范」（canvas 渲染像素图纸 / next-image + WebP / 第三方脚本预算 / DOM 节点上限 / Web Vitals 目标 / robots.txt 模板）；后续 §8~§12 整体顺位；关联竞品分析 30-competitive-analysis.md §1.6 / §1.11 |
