@@ -120,7 +120,7 @@
 当前阶段: M0 启动决策门（Phase 1 启动前）
 项目周次: Pre-Week 1
 仓库类型: 文档驱动（Docs-First），代码尚未启动
-最近重大决策: ADR-001 ~ ADR-010 已建立基线；ADR-011 ~ ADR-026（PRD v0.8 灵魂对齐第二轮）；ADR-027（部署侧整体迁阿里云，取代 ADR-002 部署条目）
+最近重大决策: ADR-001 ~ ADR-010 已建立基线；ADR-011 ~ ADR-026（PRD v0.8 灵魂对齐第二轮）；ADR-027（部署侧整体迁阿里云）；ADR-028（部署形态收敛为单 ECS Docker Compose 全栈，部分取代 ADR-027）
 未决议题: TBD-01 ~ TBD-10（详见 decision-log.md §3）
 最后更新: 2026-05-18
 ```
@@ -182,7 +182,7 @@ ai-pin-dou/
 
 ---
 
-## 5. 技术栈速查（关联 ADR-002 / ADR-027）
+## 5. 技术栈速查（关联 ADR-002 / ADR-027 / ADR-028）
 
 | 层级 | 选型 |
 |---|---|
@@ -191,7 +191,7 @@ ai-pin-dou/
 | 算法 | OpenCV + rembg + scikit-learn |
 | 数据库 | PostgreSQL 15 + Redis 7（阿里云 RDS + 云数据库 Redis）|
 | 对象存储 | 阿里云 OSS（+ CDN）|
-| 部署 | 阿里云 ECS + Docker（业务服务）+ 阿里云函数计算 FC（算法服务、物流回调订阅器）|
+| 部署 | **MVP：单台阿里云 ECS + Docker Compose 全栈**（biz-api / algo-api / inv-scanner / logi-subscriber / celery-worker / nginx）；后续按 04-system-architecture.md §4.4 阈值剥离算法到第二台 ECS 或函数计算 FC（关联 ADR-028）|
 | 镜像仓库 | 阿里云容器镜像服务 ACR |
 | 日志监控 | 阿里云 SLS + Prometheus/Grafana |
 | 支付 | 微信支付 + 字节支付 |
@@ -286,7 +286,7 @@ ai-pin-dou/
 - [ ] 5 位以上小红书 KOL 协议
 - [ ] 30 张真实案例图（首页 US-0.3 用）
 
-### 🟦 基础设施（关联 ADR-027）
+### 🟦 基础设施（关联 ADR-027 / ADR-028）
 
 - [x] **阿里云 ECS 规格已确认**（≥ 2C4G，业务服务承载 MVP < 50 QPS）— 2026-05-18 已完成
 - [x] **域名备案完成**（业务服务对外域名）— 2026-05-18 已完成
@@ -294,10 +294,11 @@ ai-pin-dou/
 - [ ] 阿里云 RDS PostgreSQL 15 实例开通 + 同 VPC 内网放通
 - [ ] 阿里云云数据库 Redis 7 实例开通 + 同 VPC 内网放通
 - [ ] 阿里云 OSS Bucket 开通 + 生命周期规则（原图 24h 自动删除，关联 04-system-architecture.md §5.2）
-- [ ] 阿里云函数计算 FC 服务开通 + 抠图 / 像素化 / 风格变体 / 物流回调订阅器函数骨架
-- [ ] 阿里云容器镜像服务 ACR 命名空间创建（业务镜像存储）
-- [ ] 阿里云 SLS 日志项目 + Project/Logstore 创建（业务 + FC 双源接入）
-- [ ] VPC 内网打通自检：ECS ↔ FC ↔ RDS ↔ Redis ↔ OSS
+- [ ] 阿里云容器镜像服务 ACR 命名空间创建（biz-api / algo-api 镜像存储）
+- [ ] 阿里云 SLS 日志项目 + Project/Logstore 创建（容器日志统一采集）
+- [ ] ECS 安装 Docker + Docker Compose，编写 `docker-compose.yml` 模板（含 nginx / biz-api / algo-api / inv-scanner / logi-subscriber / celery-worker，关联 ADR-028）
+- [ ] ECS ↔ RDS / Redis / OSS 同 VPC 内网连通性自检
+- [ ] 阿里云监控 + 企业微信告警接入（特别是 §4.4 回切阈值）
 
 **进度判定**：阻塞项必须 100% 通过；其他完成 ≥ 70% 即可进入 Phase 1。
 
@@ -326,3 +327,4 @@ ai-pin-dou/
 | 2026-05-17 | v0.3 | 新增 §1.5 大改动强制提交规则（>200 行必须提交） | 单人项目版本兜底 |
 | 2026-05-18 | v0.5 | §2 项目当前状态同步 ADR-011~027；§5 技术栈表"部署"行更新为阿里云 ECS + 函数计算 FC，新增 ACR 与 SLS 行 | 关联 ADR-027 |
 | 2026-05-18 | v0.6 | §8 启动 Checklist 新增「🟦 基础设施」小节：ECS 规格 / 域名备案 / ICP 备案 已完成；RDS / Redis / OSS / FC / ACR / SLS 待开通 | 关联 ADR-027 |
+| 2026-05-18 | v0.7 | §5 技术栈表"部署"行收敛为单 ECS + Docker Compose 全栈；§2 项目当前状态 + §8 基础设施 checklist 同步去掉 FC 函数骨架开通项，改为 docker-compose 模板编写项 | 关联 ADR-028 |
