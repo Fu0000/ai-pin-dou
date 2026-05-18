@@ -1,0 +1,42 @@
+[project]
+name = "algo-feasibility"
+version = "0.1.0"
+description = "M0 algorithm feasibility test bench (ADR-014)"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    # Image core
+    "pillow>=10.0",
+    "numpy>=1.26",
+    "opencv-python-headless>=4.9",
+
+    # Background removal (ADR-003 open-source wrap)
+    "rembg>=2.0",
+    "onnxruntime>=1.17",
+
+    # Color quantization
+    "scikit-learn>=1.4",
+    "scikit-image>=0.22",   # CIE Lab conversion
+
+    # Notebook
+    "jupyter>=1.0",
+    "ipykernel>=6.29",
+    "matplotlib>=3.8",
+    "pandas>=2.2",
+
+    # Profiling
+    "psutil>=5.9",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]

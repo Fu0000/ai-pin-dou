@@ -1,0 +1,22 @@
+# Samples (raw photos, not committed)
+samples/
+
+# Results (regenerated each run)
+data/results/
+
+# Mard palette (license-bound, fetch separately)
+data/mard_palette.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
