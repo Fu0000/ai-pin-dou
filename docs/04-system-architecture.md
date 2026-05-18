@@ -1,11 +1,11 @@
-# 系统架构 · 拼豆小程序 v0.5
+# 系统架构 · 拼豆小程序 v0.6
 
 ```yaml
 文档名: System Architecture - 拼豆小程序
-版本: v0.5（C4-L2 + 库存预占 + 履约订阅）
-最后更新: 2026-05-17
+版本: v0.6（C4-L2 + 库存预占 + 履约订阅 + 阿里云部署落定）
+最后更新: 2026-05-18
 关联文档: 01-prd.md, 05-data-model.md, 06-api-spec.md, 07-algo-spec.md
-关联 ADR: ADR-002, ADR-003, ADR-011, ADR-019, ADR-021, ADR-023, ADR-026
+关联 ADR: ADR-002, ADR-003, ADR-011, ADR-019, ADR-021, ADR-023, ADR-026, ADR-027
 ```
 
 ---
@@ -13,7 +13,7 @@
 ## 1. 架构总览
 
 ### 1.1 一句话定位
-> **多端小程序前端 + Serverless 算法引擎 + 关系型业务库 + 对象存储**的轻量化云原生架构
+> **多端小程序前端 + 阿里云 ECS 业务服务（FastAPI 容器）+ 阿里云函数计算 FC 算法服务（Python） + 阿里云托管数据层**的轻量化云原生架构（关联 ADR-027）
 
 ### 1.2 整体架构图（C4 - L1 系统上下文）
 
@@ -34,25 +34,27 @@
                               │
                               ▼
                 ┌────────────────────────┐
-                │   API Gateway          │
-                │ （腾讯 / 阿里 / 微信云） │
+                │  阿里云 API 网关        │
+                │ (MVP 可先用 Nginx 反代) │
                 └────────────┬───────────┘
                              │
         ┌────────────────────┼────────────────────┐
         ▼                    ▼                    ▼
-  ┌──────────┐        ┌─────────────┐      ┌────────────┐
-  │ 业务服务  │        │ 算法服务    │      │ 异步任务队列│
-  │ FastAPI  │        │ Serverless  │      │ Celery/RQ  │
-  └────┬─────┘        └──────┬──────┘      └─────┬──────┘
-       │                     │                   │
-       ▼                     ▼                   ▼
-  ┌─────────┐          ┌──────────┐         ┌────────┐
-  │ Postgres│          │   OSS    │         │ Redis  │
-  │ + Redis │          │（图片/图纸）│       │（缓存/队列）│
-  └─────────┘          └──────────┘         └────────┘
-       │
-       │ 业务事件
-       ▼
+  ┌──────────────┐    ┌─────────────┐      ┌────────────┐
+  │ 业务服务      │    │ 算法服务    │      │ 异步任务队列│
+  │ FastAPI       │    │ 函数计算 FC │      │ Celery/RQ  │
+  │ 阿里云 ECS    │    │ Python 3.11│      │ on Redis   │
+  │ Docker        │    │             │      │            │
+  └──────┬───────┘    └──────┬──────┘      └─────┬──────┘
+         │                   │                   │
+         ▼                   ▼                   ▼
+  ┌──────────────┐    ┌──────────────┐    ┌────────────┐
+  │ 阿里云 RDS    │    │ 阿里云 OSS    │    │ 阿里云云    │
+  │ PostgreSQL 15 │    │（图片/图纸）  │    │ 数据库 Redis│
+  └──────────────┘    └──────────────┘    └────────────┘
+         │
+         │ 业务事件
+         ▼
   ┌──────────────┐    ┌──────────────┐
   │ 供应链 API    │    │ 数据中台      │
   │（Mard / 优肯）│    │（埋点/BI）    │
@@ -61,20 +63,20 @@
 
 ### 1.3 C4-L2 容器图（Mermaid）
 
-> 在 §1.2 系统上下文之上展开容器层视图，明确 MVP 阶段每个容器的职责边界。
+> 在 §1.2 系统上下文之上展开容器层视图，明确 MVP 阶段每个容器的职责边界。所有容器统一部署于阿里云（关联 ADR-027）。
 
 ```mermaid
 flowchart LR
     User[拼豆用户·小程序前端]
-    APIGW[API 网关]
-    BizSvc[定制服务<br/>FastAPI]
-    AlgoSvc[算法服务<br/>Serverless]
-    InvSvc[库存预占服务<br/>Redis 30min TTL]
-    OrderSvc[订单/履约服务]
-    OSS[对象存储<br/>OSS/COS]
-    PG[(PostgreSQL 15)]
+    APIGW[阿里云 API 网关<br/>MVP 可先用 Nginx 反代]
+    BizSvc[定制服务<br/>FastAPI · 阿里云 ECS Docker]
+    AlgoSvc[算法服务<br/>Python · 阿里云函数计算 FC]
+    InvSvc[库存预占服务<br/>阿里云云数据库 Redis · 30min TTL]
+    OrderSvc[订单/履约服务<br/>BizSvc 模块]
+    OSS[阿里云 OSS]
+    PG[(阿里云 RDS PostgreSQL 15)]
     PaySvc[微信支付 + 微信小店]
-    LogiSub[物流回调订阅器<br/>已签收事件]
+    LogiSub[物流回调订阅器<br/>阿里云函数计算 FC]
 
     User --> APIGW
     APIGW --> BizSvc
@@ -91,7 +93,7 @@ flowchart LR
     InvSvc -->|支付成功转正式扣减| PG
 ```
 
-> 关联 ADR-019（风格变体分支）/ ADR-023（库存预占）/ ADR-026（履约签收事件订阅）。
+> 关联 ADR-019（风格变体分支）/ ADR-023（库存预占）/ ADR-026（履约签收事件订阅）/ ADR-027（阿里云部署落定）。
 
 ---
 
@@ -108,10 +110,10 @@ flowchart LR
 
 ### 2.2 网关层
 
-- **MVP**：直接使用微信云开发（CloudBase）的内置网关，省运维（关联 ADR-002）
-- **Phase 2 后**：迁移到独立 API Gateway（腾讯 API Gateway / Apisix），支持限流、鉴权、路由
+- **MVP**：阿里云 API 网关，或先用 ECS 上的 Nginx 反代到 FastAPI 容器，省一笔网关费用，等 QPS 起来再切（关联 ADR-027）
+- **Phase 2 后**：迁移到独立 API Gateway（阿里云 API Gateway / Apisix），支持限流、鉴权、路由
 
-### 2.3 业务服务层（FastAPI）
+### 2.3 业务服务层（FastAPI · 阿里云 ECS Docker）
 
 按领域划分微服务，但 MVP 阶段建议**单体部署，多模块组织**：
 
@@ -125,33 +127,37 @@ flowchart LR
 | `commerce-service` | 购物车、SKU、价格 |
 
 > **建议**：MVP 用单体，Phase 3 GMV 起来后按需拆分。
+>
+> **部署形态**（关联 ADR-027）：单体打包成一个 Docker 镜像，部署在阿里云 ECS 上；用 Docker Compose 编排 FastAPI + Nginx（反代）+ 库存扫描器 worker；通过 Docker 健康检查 + systemd 守护实现进程级稳定性。
 
-### 2.4 算法服务层（核心）
+### 2.4 算法服务层（核心 · 阿里云函数计算 FC）
 
 | 子模块 | 输入 | 输出 | 部署方式 |
 |---|---|---|---|
-| 抠图（Cutout）| 原始图片 | 透明背景图片 | Serverless 云函数 |
-| 像素化（Pixelize）| 图片 + 网格规格 + 难度 | 像素矩阵 + 颜色统计 | Serverless 云函数 |
-| 色号映射（ColorMap）| 像素矩阵 + 品牌色卡 | 带色号的像素矩阵 | 业务服务内嵌 |
-| 风格变体（StyleVariant Branch）| Quantize 输出 | 3 套变体图（写实 / 像素艺术 / 卡通）+ 默认变体标识 | Serverless 云函数（并行 3 任务） |
-| 算料（Calculation）| 带色号矩阵 | SKU 列表 + 数量 | 业务服务内嵌 |
+| 抠图（Cutout）| 原始图片 | 透明背景图片 | 阿里云函数计算 FC |
+| 像素化（Pixelize）| 图片 + 网格规格 + 难度 | 像素矩阵 + 颜色统计 | 阿里云函数计算 FC |
+| 色号映射（ColorMap）| 像素矩阵 + 品牌色卡 | 带色号的像素矩阵 | 业务服务内嵌（ECS）|
+| 风格变体（StyleVariant Branch）| Quantize 输出 | 3 套变体图（写实 / 像素艺术 / 卡通）+ 默认变体标识 | 阿里云函数计算 FC（并行 3 任务） |
+| 算料（Calculation）| 带色号矩阵 | SKU 列表 + 数量 | 业务服务内嵌（ECS）|
 | LED 指令生成（IoT）| 像素矩阵 | BLE 数据帧序列 | Phase 3 启用 |
 
 > **管线分支说明**：算法管线 §④ Quantize 完成后会**并行**分叉到「风格变体生成」管线（关联 §2.7 / ADR-019）；3 套变体输出预写入对象存储与 `patterns.pattern_data.style_variants`，用户切换时零延迟，不重算。
+>
+> **冷启动兜底**（关联 ADR-027）：FC 首次冷启动 2~5s，对"上传图片→等图纸"场景前端有 loading 兜底；高峰期可配置 FC **预留实例**预热常用函数（抠图 / 像素化 / 风格变体）。
 >
 > 详见 [`./07-algo-spec.md`](./07-algo-spec.md)
 
 ### 2.5 库存预占模块（关联 ADR-023）
 
-实现"永远买得到"承诺的后端兜底。MVP 用 Redis 即可，无需单独服务。
+实现"永远买得到"承诺的后端兜底。MVP 用阿里云云数据库 Redis 即可，无需单独服务（关联 ADR-027）。
 
 | 维度 | 实现 |
 |---|---|
-| 数据载体 | Redis Hash：`inv:reserve:<reservation_id>` + EXPIRE 1800（30 min TTL）|
+| 数据载体 | 阿里云云数据库 Redis Hash：`inv:reserve:<reservation_id>` + EXPIRE 1800（30 min TTL）|
 | 触发时机 | 算法生成图纸成功 → BizSvc 调用 `POST /inventory/reserve` |
-| 释放时机 | ① 支付成功 → 转正式扣减 Postgres `bead_skus.stock_qty` ② 30 min 超时 → Redis 自动过期 ③ 用户取消 → `POST /inventory/release` |
+| 释放时机 | ① 支付成功 → 转正式扣减 RDS PostgreSQL `bead_skus.stock_qty` ② 30 min 超时 → Redis 自动过期 ③ 用户取消 → `POST /inventory/release` |
 | 监控指标 | `ghost_reservation_rate`（预占未成交比例）/ `oversell_count`（同色号超额）|
-| 幽灵库存补偿 | 每分钟扫描器对比 Redis ↔ Postgres，差异 > 阈值时写企业微信告警 |
+| 幽灵库存补偿 | 业务服务容器内每分钟扫描器对比 Redis ↔ RDS PG，差异 > 阈值时写企业微信告警；扫描器作为 Docker Compose 中的独立 worker 进程常驻 |
 
 > 关联接口：详见 06-api-spec.md §7.1 / §7.2。  
 > 关联数据模型：详见 05-data-model.md `inventory_reservations` 表。
@@ -163,7 +169,7 @@ flowchart LR
 | 维度 | 实现 |
 |---|---|
 | 输入 | 微信小店 / 自建履约系统的物流回调（关键状态：**已签收**） |
-| 订阅器 | 独立 Serverless 云函数 `logistics-subscriber`，幂等消费 webhook |
+| 订阅器 | 独立阿里云函数计算 FC 函数 `logistics-subscriber`，幂等消费 webhook（关联 ADR-027）|
 | 输出动作 | ① 调用 `wx.sendSubscribeMessage` 推送服务消息「💝 拼豆到家啦~ 拼完记得来这里晒图」② 触发 M11 晒图引导小程序内页（订单详情页"我拼完啦"按钮亮起） |
 | 兜底 | 48h 未推达 → 走短信回退（仍受微信公众平台频次限制）|
 | 关联 PRD | M11 完成与分享 US-11.1（签收当天主动按钮） |
@@ -176,19 +182,23 @@ flowchart LR
 |---|---|
 | 触发时机 | 算法 8 步管线 §④ Quantize 完成后并行触发 3 个变体任务（详见 07-algo-spec.md §1.2）|
 | 变体类型 | 写实（默认）/ 像素艺术 / 卡通 共 3 套，每套独立的色彩风格管线参数 |
-| 存储 | 对象存储路径 `patterns/{id}/variants/{style}.png`；元数据写入 `patterns.pattern_data.style_variants` 子键（详见 05-data-model.md）|
+| 部署 | 阿里云函数计算 FC 并行调用 3 个函数实例（关联 ADR-027）|
+| 存储 | 阿里云 OSS 路径 `patterns/{id}/variants/{style}.png`；元数据写入 `patterns.pattern_data.style_variants` 子键（详见 05-data-model.md）|
 | 用户切换 | 前端调 `POST /patterns/{id}/style-variants` 的 list / switch 双 action，零延迟（不重算）|
-| 缓存策略 | 与原图共享同一 `pattern_id` 前缀，对象存储天然 CDN 友好 |
+| 缓存策略 | 与原图共享同一 `pattern_id` 前缀，OSS + 阿里云 CDN 天然友好 |
 
 ### 2.8 数据存储层
 
 | 存储 | 用途 | 选型 |
 |---|---|---|
-| 关系数据库 | 用户、订单、图纸元数据、色卡 | PostgreSQL（云托管）|
-| 缓存 | 热点色卡、Session、限流计数、库存预占 | Redis（云托管）|
-| 对象存储 | 用户上传图片、生成图纸图、风格变体图、成品照 | OSS / COS |
-| 消息队列 | 异步图像处理、订单事件、履约回调 | Redis Queue（MVP）→ RabbitMQ（Phase 3）|
-| 数据仓库 | 埋点事件、BI 分析 | ClickHouse（Phase 2）|
+| 关系数据库 | 用户、订单、图纸元数据、色卡 | 阿里云 RDS PostgreSQL 15 |
+| 缓存 | 热点色卡、Session、限流计数、库存预占 | 阿里云云数据库 Redis 7 |
+| 对象存储 | 用户上传图片、生成图纸图、风格变体图、成品照 | 阿里云 OSS |
+| CDN | 图纸预览图、风格变体、首页素材 | 阿里云 CDN（接 OSS 源站）|
+| 消息队列 | 异步图像处理、订单事件、履约回调 | Redis Queue（MVP）→ 阿里云消息队列 RocketMQ（Phase 3）|
+| 数据仓库 | 埋点事件、BI 分析 | ClickHouse（Phase 2，可托管在阿里云 EMR / 自建）|
+
+> 同云内网：ECS ↔ FC ↔ RDS ↔ Redis ↔ OSS 全部走阿里云内网，省外网流量费 + 减少跨云链路抖动（关联 ADR-027）。
 
 ### 2.9 第三方依赖
 
@@ -199,7 +209,7 @@ flowchart LR
 | 微信小店 OpenAPI | 标品 + 送礼物订单（关联 §10）| 🔴 关键 |
 | 物流回调 webhook（微信小店 / 自建履约）| 履约「已签收」事件订阅（关联 §2.6）| 🟠 高 |
 | Mard 色卡 API | 库存约束 | 🟠 高 |
-| 内容安全 API（腾讯云天御）| 图片审核 | 🟠 高（Phase 3）|
+| 内容安全 API（阿里云 Green）| 图片审核 | 🟠 高（Phase 3，关联 ADR-027 同云调用）|
 | 快递 100 / 菜鸟 | 物流追踪 | 🟢 中 |
 
 ---
@@ -212,16 +222,16 @@ flowchart LR
 [1] 用户在小程序选择图片
         │
         ▼
-[2] 小程序前端通过临时 URL 上传至 OSS
+[2] 小程序前端通过临时 URL 上传至阿里云 OSS
         │
         ▼
-[3] OSS 触发事件 → 云函数（抠图）
+[3] OSS 事件触发 → 阿里云函数计算 FC（抠图函数）
         │
         ▼
-[4] 抠图结果 → 云函数（像素化 + 色彩量化）
+[4] 抠图结果 → FC（像素化 + 色彩量化函数）
         │
         ▼
-[5] 业务服务调用 inventory-service 查询库存
+[5] 业务服务（ECS）调用 inventory-service 查询 RDS PG 库存
         │
         ▼
 [6] 缺货色号自动 CIE Lab 替换
@@ -245,6 +255,8 @@ flowchart LR
 [12] 仓库分拣 → 物流发货 → 用户收货
 ```
 
+> 链路 §3 ~ §6 全部走阿里云内网（FC ↔ OSS ↔ RDS ↔ Redis），延迟低且免外网流量费（关联 ADR-027）。
+
 ### 3.2 异步事件流（事件驱动核心）
 
 | 事件 | 生产方 | 消费方 |
@@ -263,34 +275,52 @@ flowchart LR
 
 ### 4.1 环境矩阵
 
-| 环境 | 用途 | 域名 | 数据 |
-|---|---|---|---|
-| dev | 本地开发 | localhost | 模拟数据 |
-| test | 测试 | test-api.pindou.com | 完整测试集 |
-| staging | 预发布 | stage-api.pindou.com | 生产数据快照 |
-| prod | 生产 | api.pindou.com | 真实数据 |
+| 环境 | 用途 | 域名 | 部署位置 | 数据 |
+|---|---|---|---|---|
+| dev | 本地开发 | localhost | 开发机 Docker | 模拟数据 |
+| test | 测试 | test-api.pindou.com | 阿里云 ECS（共享 / 小规格） | 完整测试集 |
+| staging | 预发布 | stage-api.pindou.com | 阿里云 ECS（与 prod 同规格） | 生产数据快照 |
+| prod | 生产 | api.pindou.com | 阿里云 ECS + FC + RDS + Redis | 真实数据 |
 
-### 4.2 Serverless vs 容器混合部署
+> ⚠️ W1 启动阻塞项：所有对外域名必须完成阿里云 ICP 备案，否则微信支付回调拒绝接入（关联 ADR-027）。
+
+### 4.2 阿里云混合部署：业务容器 + 算法 Serverless（关联 ADR-027）
 
 | 服务 | 部署方式 | 理由 |
 |---|---|---|
-| 业务服务（FastAPI）| 容器（K8s 或云托管）| 长连接、稳定性 |
-| 算法服务 | Serverless 云函数 | 突发流量、按用计费（关联 ADR-002）|
-| 异步任务 | Serverless 云函数 | 同上 |
-| 静态资源 | CDN | 加速 + 省钱 |
+| 业务服务（FastAPI 单体）| 阿里云 ECS + Docker Compose | 长连接、库存扫描器常驻、稳定性 |
+| 库存预占扫描器 worker | 与业务服务同 Docker Compose 内独立 worker 进程 | 与 BizSvc 共享数据库连接池，每分钟扫描 |
+| 算法服务（抠图 / 像素化 / 风格变体）| 阿里云函数计算 FC | 突发流量、按用计费、并行性能 |
+| 物流回调订阅器 | 阿里云函数计算 FC | webhook 幂等消费、调用稀疏 |
+| 静态资源 | 阿里云 OSS + CDN | 加速 + 省钱 |
+| 数据层 | 阿里云 RDS PG + 云数据库 Redis + OSS | 全托管，免运维 |
+
+**ECS 规格建议**（MVP）：
+- 业务服务：2C4G 起步（≤ 50 QPS 够用）；staging 同规格，dev 可 1C2G
+- 单实例先跑，QPS > 200 触发横向扩容（HPA 由 K8s 接管，Phase 3 再上）
+
+**FC 配置建议**：
+- 抠图函数：单次 2~5s，2GB 内存；高峰期配 5 个预留实例避免冷启动
+- 像素化函数：单次 1~3s，1GB 内存
+- 风格变体函数：单次 3~6s，2GB 内存，**并发度 3**（同图纸 3 套变体）
+- 物流订阅器：单次 < 500ms，512MB 内存，无需预留实例
 
 ### 4.3 CI/CD 流水线（高层）
 
 ```
 代码提交 → GitHub Actions
-  ├── 单元测试
-  ├── Lint / 类型检查
-  ├── 构建镜像 / 编译小程序
+  ├── 单元测试（pytest）
+  ├── Lint / 类型检查（ruff + mypy）
+  ├── 构建产物
+  │     ├── 业务服务 → Docker 镜像 → 阿里云容器镜像服务 ACR
+  │     └── 算法函数 → 函数代码包 → 阿里云函数计算 FC
   └── 部署
-        ├── PR → test 环境
-        ├── main → staging 环境
+        ├── PR → test 环境（ECS 拉新镜像 + FC 灰度别名）
+        ├── main → staging 环境（同上）
         └── tag (v*.*.*) → prod 环境（需人工审批）
 ```
+
+> 业务服务通过 Docker 镜像滚动发布（双实例最小停机）；FC 通过版本别名灰度（10% 流量验证 → 全量切换）。
 
 ---
 
@@ -307,15 +337,15 @@ flowchart LR
 
 ### 5.2 数据安全
 
-- 用户上传图片：OSS 临时签名 URL，**24 小时后自动删除**
+- 用户上传图片：阿里云 OSS 临时签名 URL，**24 小时后通过生命周期规则自动删除**
 - 用户隐私数据：身份证/手机号加密存储（AES-256）
-- 数据库连接：SSL/TLS 强制
-- 备份：每日全量 + 实时 binlog 增量
+- 数据库连接：RDS PG 强制 SSL/TLS，仅允许同 VPC 内网访问
+- 备份：RDS 每日全量 + 实时 binlog 增量，保留 30 天
 
 ### 5.3 风控
 
-- 接口限流（Redis + 令牌桶）
-- 图片内容安全审核（Phase 3 接入腾讯天御）
+- 接口限流（云数据库 Redis + 令牌桶）
+- 图片内容安全审核（Phase 3 接入阿里云内容安全 Green，关联 ADR-027 同云调用）
 - 异常订单识别（同一 IP/设备短时间高频下单）
 
 ---
@@ -332,16 +362,16 @@ flowchart LR
 
 | 维度 | 触发条件 | 扩展方案 |
 |---|---|---|
-| 业务服务 | QPS > 200 | K8s HPA 自动扩容 |
-| 算法服务 | 算法耗时 P95 > 10s | Serverless 自动 + 算法降级 |
-| 数据库 | 写入 > 1k QPS | 读写分离 + 分库分表 |
+| 业务服务 | QPS > 200 | 单 ECS → 多 ECS + SLB 负载均衡 → Phase 3 上 ACK（阿里云 K8s）HPA |
+| 算法服务 | 算法耗时 P95 > 10s | FC 自动扩并发 + 配置预留实例 + 算法降级 |
+| 数据库 | 写入 > 1k QPS | RDS PG 读写分离（只读实例）+ Phase 3 分库分表 |
 | 对象存储 | — | OSS 天然横向扩展 |
 
 ### 6.3 技术债清单（已知未来要还）
 
 - [ ] MVP 单体架构后续需拆分微服务（GMV > 100 万/月触发）
-- [ ] Redis Queue 后续替换为 RabbitMQ/Kafka
-- [ ] 业务服务后续引入服务网格（Istio）
+- [ ] Redis Queue 后续替换为阿里云消息队列 RocketMQ / Kafka
+- [ ] 业务服务后续从 ECS 迁到 ACK（阿里云 K8s）+ 服务网格
 
 ---
 
@@ -351,20 +381,24 @@ flowchart LR
 
 | 类别 | 工具 | 关键指标 |
 |---|---|---|
-| Metrics | Prometheus + Grafana | QPS、延迟、错误率 |
-| Logs | ELK / Loki | 结构化日志 |
-| Traces | Jaeger（Phase 3）| 链路追踪 |
+| Metrics | 阿里云 Prometheus 服务 + Grafana（自建或托管）| QPS、延迟、错误率、ECS CPU、FC 调用次数与冷启动率 |
+| Logs | 阿里云 SLS（日志服务）| 结构化日志、关键字告警、长期归档 |
+| Traces | 阿里云 ARMS / Jaeger（Phase 3）| 链路追踪 |
+
+> 选用阿里云 SLS 而非自建 ELK 是因为：① 业务服务和 FC 都能直接吐日志到 SLS，免运维；② Phase 1 < 50 GB/月成本极低；③ Phase 3 数据量大时切自建仍然兼容（SLS 兼容 OpenTelemetry）。
 
 ### 7.2 关键告警
 
 | 告警项 | 阈值 | 通知 |
 |---|---|---|
 | 算法 P95 耗时 | > 15s | 企业微信 + 短信 |
+| FC 冷启动率 | > 20% | 企业微信（提示需要预留实例预热） |
 | 支付失败率 | > 5% | 立即通知 |
 | 5xx 错误率 | > 1% | 企业微信 |
-| 数据库 CPU | > 80% | 企业微信 |
+| RDS PG CPU | > 80% | 企业微信 |
 | 库存幽灵预占率 | > 5% | 企业微信（关联 §2.5） |
 | 履约签收推送送达率 | < 90% | 企业微信（关联 §2.6） |
+| ECS 业务实例 CPU | > 80% 持续 5min | 企业微信 |
 
 ---
 
@@ -529,3 +563,4 @@ Day 15+:  全量开放
 |---|---|---|---|
 | 2026-05-17 | v0.1 | 初始化骨架，绘制 L1 上下文图 | 项目组 |
 | 2026-05-17 | v0.5 | 新增 C4-L2 Mermaid 容器图 + 库存预占模块（Redis 30min TTL）+ 履约「已签收」事件订阅 + 风格变体生成缓存管线 + 整合 Phase 2 占位 + 灵魂三句话锚点 | 关联 ADR-019, ADR-023, ADR-026 |
+| 2026-05-18 | v0.6 | 部署侧整体迁到阿里云：§1.1 / §1.2 / §1.3 容器图 + §2.2~§2.9 描述（ECS Docker + 函数计算 FC + RDS PG + 云数据库 Redis + OSS + CDN）+ §3.1 数据流标注内网调用 + §4.1~§4.3 部署矩阵 + §5.2/§5.3 安全 + §6.2/§6.3 扩展 + §7.1 SLS 监控 + §7.2 新增 FC 冷启动率告警；语言（Python FastAPI）与算法封装策略保留 | 关联 ADR-027 |
