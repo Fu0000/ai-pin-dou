@@ -1,11 +1,11 @@
-# 算法工程规范 · 拼豆小程序 v0.6
+# 算法工程规范 · 拼豆小程序 v0.7
 
 ```yaml
 文档名: Algorithm Engineering Spec - 拼豆小程序
-版本: v0.6（cutout 主体预判回退规则）
+版本: v0.7（轻度卡通化 stylize 子步）
 最后更新: 2026-05-18
 关联文档: 04-system-architecture.md, 05-data-model.md, 06-api-spec.md, 30-competitive-analysis.md
-关联 ADR: ADR-003, ADR-004, ADR-014, ADR-019, ADR-023, ADR-024, ADR-025, ADR-029
+关联 ADR: ADR-003, ADR-004, ADR-013, ADR-014, ADR-019, ADR-023, ADR-024, ADR-025, ADR-029
 ```
 
 ---
@@ -23,7 +23,7 @@
 
 ## 1. 算法管线总览
 
-### 1.1 8 步主管线
+### 1.1 8 步主管线（含 ②.5 Stylize 子步）
 
 ```
 [原始图片]
@@ -32,7 +32,10 @@
 [① Preprocess 预处理]  ── EXIF 旋转 / 尺寸归一化 / 色彩空间转换
     │
     ▼
-[② Cutout 抠图]        ── rembg / OpenCV grabCut
+[②.5 Stylize 轻度卡通化]── bilateral 滤波 + 饱和度 ×1.15（ADR-029 v0.3）
+    │
+    ▼
+[② Cutout 抠图]        ── rembg / OpenCV grabCut + 主体预判回退
     │
     ▼
 [③ Pixelize 降采样]    ── 网格规格 16/32/48/64
@@ -203,6 +206,36 @@ def precompute_difficulty_features(image: PIL.Image) -> dict:
 | EXIF 处理 | 强制旋转修正（避免手机竖拍变横） |
 | 尺寸归一化 | 长边 resize 到 1024，保持比例 |
 | 色彩空间 | 强制 sRGB，剔除 CMYK/灰度图 |
+
+### 5.1.5 ②.5 Stylize 轻度卡通化（关联 ADR-029 v0.3）
+
+> 拼豆物理上是 32~64 网格的离散色块介质，原始照片的连续渐变和噪点强行降采样后会糊。先做轻度卡通化（双边滤波 + 饱和度提升）让低分辨率介质能更好地表达原图核心特征。**这不是产品意义上的"卡通风格"——重度卡通化属于 ADR-019 的风格变体，不影响默认管线。**
+
+| 项 | 约定 |
+|---|---|
+| 双边滤波 | `cv2.bilateralFilter(d=9, sigmaColor=75, sigmaSpace=75)` |
+| 饱和度提升 | HSV S 通道 ×1.15 |
+| 锐化 | **不做**（A/B 实测无显著收益）|
+| 性能预算 | P95 ≤ 50ms（实测 19ms）|
+| 默认开关 | **默认开启**；可通过 `--no-stylize` 关闭做对照 |
+
+**A/B/C/D 实测结论（[`/algo-feasibility/M0_DRYRUN_REPORT.md §3`](../algo-feasibility/M0_DRYRUN_REPORT.md)）**：
+
+- B（仅 bilateral）让 cat 类前景 cells +60%（rembg 抠图边缘更稳定）
+- C（+饱和度 1.15）让预览饱和度从 0.106→0.166（+57%），视觉更"豆豆"
+- D（+sharpen）相比 C 收益 < 5%，不值得维护
+
+```python
+# pipeline/stylize.py 实测代码
+def stylize(rgb, *, bilateral=True, saturation=1.15, sharpen=False):
+    if bilateral:
+        rgb = cv2.bilateralFilter(rgb, d=9, sigmaColor=75, sigmaSpace=75)
+    if abs(saturation - 1.0) > 1e-3:
+        hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV).astype(np.float32)
+        hsv[..., 1] = np.clip(hsv[..., 1] * saturation, 0, 255)
+        rgb = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2RGB)
+    return rgb
+```
 
 ### 5.2 ② Cutout 抠图
 
@@ -490,3 +523,4 @@ dependencies = [
 | 2026-05-17 | v0.1 | 初始化算法工程规范，建立 8 步管线 + 版本管理基线 | — |
 | 2026-05-17 | v0.5 | 新增 §1.2 风格变体生成分支 + §3 推荐档位预分析（颜色多样性 + 边缘密度 + 失败回退「摆件经典」）+ §4 色号映射 ↔ 库存预占衔接 + §6 性能与质量门（M0 阻塞门 100 张样图 P95 ≤ 10s + 优良率 ≥ 60%；M1 决策门 ≥ 75%）+ 灵魂三句话锚点 | 关联 ADR-014, ADR-019, ADR-023, ADR-024, ADR-025 |
 | 2026-05-18 | v0.6 | §5.2 ② Cutout 新增「主体存在性预判」回退规则（前景比 < 5% 回退原图）；来自真实图 dry-run 发现：rembg 在风景类几乎全识别为背景 | 关联 ADR-029 v0.2 |
+| 2026-05-18 | v0.7 | 新增 §5.1.5 ②.5 Stylize 轻度卡通化（bilateral + saturation 1.15，默认开启）；§1.1 主管线图同步加入 ②.5 节点；A/B/C/D 实测确认 sharpen 无收益不引入 | 关联 ADR-013（识别度优先）/ ADR-019（重度卡通化作为变体）/ ADR-029 v0.3 |

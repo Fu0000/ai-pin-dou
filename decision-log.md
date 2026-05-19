@@ -1464,3 +1464,10 @@ decision-log.md（决策变更，沉淀 Why-changed）  ◄── 本文档
   - 真实图 P95 = 0.472s（vs 合成图 0.402s，慢 17%），仍远低于 10s 阈值（21× 余量）
   - **新发现**：rembg u2netp 在风景类（无明确主体）几乎全识别为背景，scene 中位色数从无 cutout 的 13 降到 with cutout 的 3。算法管线必须新增「主体存在性预判」步骤（前景比 < 5% 时跳过 cutout）。
   - 该发现已固化到 [`/algo-feasibility/M0_DRYRUN_REPORT.md`](./algo-feasibility/M0_DRYRUN_REPORT.md) §2.1，将作为 ADR-030 真实样本判定时的算法管线必须项。
+- 2026-05-18：v0.3 「卡通化」分级讨论 + A/B/C/D 实测落定
+  - 用户提出"图片卡通化是否提升效果"。明确区分**轻度（preprocess 范畴）vs 重度（GAN 风格迁移）**。
+  - 重度卡通化破坏识别度（违反 ADR-013 灵魂 #2），归 ADR-019 风格变体管理，不进默认管线。
+  - 轻度卡通化经 60 张真实图 A/B/C/D 实测：bilateral 让 cat 类前景 cells +60%（rembg 抠图更稳）；saturation×1.15 让饱和度 +57%（视觉更鲜亮）；sharpen 收益 < 5% 不引入。
+  - 决策：**默认启用 bilateral + saturation 1.15**（性能预算 P95 ≤ 50ms，实测 19ms）。
+  - 算法管线由 8 步扩展为「8 步 + ②.5 Stylize 子步」。新基线 P95 = 0.569s（仍有 18× 余量）。
+  - 同步固化到 `pipeline/stylize.py`、[`docs/07-algo-spec.md §5.1.5`](./docs/07-algo-spec.md)、[`/algo-feasibility/M0_DRYRUN_REPORT.md §3`](./algo-feasibility/M0_DRYRUN_REPORT.md)。

@@ -18,6 +18,7 @@ from .outline import outline
 from .pixelize import pixelize
 from .preprocess import preprocess
 from .quantize import quantize
+from .stylize import stylize
 
 
 @dataclass
@@ -54,8 +55,14 @@ def run_pipeline(
     target_colors: int = 24,
     do_cutout: bool = True,
     do_outline: bool = True,
+    stylize_bilateral: bool = True,
+    stylize_saturation: float = 1.15,
+    stylize_sharpen: bool = False,
 ) -> PipelineResult:
     """Execute the full 8-step pipeline on a single image.
+
+    Defaults reflect ADR-029 v0.3 (lightweight cartoonization preprocess):
+        bilateral=True, saturation=1.15, sharpen=False.
 
     Args:
         image_path: source photo (any format Pillow supports).
@@ -63,6 +70,9 @@ def run_pipeline(
         target_colors: K-Means cluster count before snapping to Mard palette.
         do_cutout: if False, skip background removal (faster, for ablation).
         do_outline: if False, skip step 7.
+        stylize_bilateral: enable cv2.bilateralFilter (default on, ADR-029 v0.3).
+        stylize_saturation: HSV S-channel multiplier (default 1.15).
+        stylize_sharpen: enable unsharp mask (default off; A/B showed no benefit).
 
     Returns:
         PipelineResult with timings and color_summary.
@@ -74,6 +84,17 @@ def run_pipeline(
     # ① Preprocess
     rgb = preprocess(image_path)
     t = _tick("preprocess", t, timings)
+
+    # ②.5 Stylize (lightweight cartoonization, ADR-029 v0.3)
+    do_stylize = stylize_bilateral or abs(stylize_saturation - 1.0) > 1e-3 or stylize_sharpen
+    if do_stylize:
+        rgb = stylize(
+            rgb,
+            bilateral=stylize_bilateral,
+            saturation=stylize_saturation,
+            sharpen=stylize_sharpen,
+        )
+        t = _tick("stylize", t, timings)
 
     # ② Cutout
     rgba, alpha = cutout(rgb, enabled=do_cutout)

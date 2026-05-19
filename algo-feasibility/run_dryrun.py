@@ -89,9 +89,40 @@ def main() -> int:
     parser.add_argument("--colors", type=int, default=24, help="K-Means cluster count")
     parser.add_argument("--no-cutout", action="store_true", help="ablation: skip rembg")
     parser.add_argument("--no-outline", action="store_true", help="ablation: skip outline step")
+    parser.add_argument(
+        "--no-stylize",
+        action="store_true",
+        help="disable lightweight cartoonization preprocess (ADR-029 v0.3 default ON)",
+    )
+    parser.add_argument(
+        "--stylize-bilateral",
+        action="store_true",
+        default=True,
+        help="enable cv2.bilateralFilter (default ON, ADR-029 v0.3)",
+    )
+    parser.add_argument(
+        "--stylize-saturation",
+        type=float,
+        default=1.15,
+        help="HSV saturation multiplier (default 1.15, ADR-029 v0.3)",
+    )
+    parser.add_argument(
+        "--stylize-sharpen",
+        action="store_true",
+        help="enable unsharp mask (default OFF; A/B showed no benefit)",
+    )
     parser.add_argument("--limit", type=int, default=0, help="cap N samples for quick test")
+    parser.add_argument(
+        "--label",
+        type=str,
+        default="",
+        help="run label appended to output dir (e.g. 'a_baseline', 'b_bilateral')",
+    )
     args = parser.parse_args()
 
+    if args.label:
+        global RESULTS_DIR
+        RESULTS_DIR = ROOT / "data" / f"results_{args.label}"
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     palette_entries, palette_lab = load_palette()
@@ -124,6 +155,9 @@ def main() -> int:
                 target_colors=args.colors,
                 do_cutout=not args.no_cutout,
                 do_outline=not args.no_outline,
+                stylize_bilateral=args.stylize_bilateral and not args.no_stylize,
+                stylize_saturation=args.stylize_saturation if not args.no_stylize else 1.0,
+                stylize_sharpen=args.stylize_sharpen and not args.no_stylize,
             )
         except Exception as e:
             print(f"[{i+1}/{len(samples)}] ❌ {sample_id} -> {e}")
@@ -199,7 +233,25 @@ def main() -> int:
         ),
         "step_p95_ms": {
             step: round(_percentile([r.get(f"step_{step}_ms", 0) for r in valid], 0.95), 1)
-            for step in ("preprocess", "cutout", "pixelize", "quantize", "color_map", "outline", "calculate")
+            for step in (
+                "preprocess",
+                "stylize",
+                "cutout",
+                "pixelize",
+                "quantize",
+                "color_map",
+                "outline",
+                "calculate",
+            )
+        },
+        "args": {
+            "grid": args.grid,
+            "colors": args.colors,
+            "no_cutout": args.no_cutout,
+            "no_outline": args.no_outline,
+            "stylize_bilateral": args.stylize_bilateral,
+            "stylize_saturation": args.stylize_saturation,
+            "stylize_sharpen": args.stylize_sharpen,
         },
         "by_category": {},
     }
